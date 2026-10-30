@@ -2,61 +2,1578 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8">
-    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="width=device-width, initial-scale=1, viewport-fit=cover" name="viewport">
     <meta content="notranslate" name="google">
-    <meta content="Software developer specialized in building reliable and maintainable applications using Ruby and Rails, with a passion for code quality, testing, refactoring, clean design, and user experience. Technologies: Ruby, Rails, JavaScript, React, CSS, Sass, GraphQL. " name="description">
+    <meta content="Luján H. Fernaud, software engineer. Building reliable and maintainable applications with Ruby, Rails and React." name="description">
     <link href="assets/images/favicons/apple-touch-icon.png" rel="apple-touch-icon" sizes="180x180">
     <link href="assets/images/favicons/favicon-32x32.png" rel="icon" sizes="32x32" type="image/png">
     <link href="assets/images/favicons/favicon-16x16.png" rel="icon" sizes="16x16" type="image/png">
     <link href="assets/images/favicons/site.webmanifest" rel="manifest">
-    <link color="#5bbad5" href="assets/images/favicons/safari-pinned-tab.svg" rel="mask-icon">
     <link href="assets/images/favicons/favicon.ico" rel="shortcut icon">
-    <meta content="#da532c" name="msapplication-TileColor">
+    <meta content="#07061c" name="msapplication-TileColor">
     <meta content="assets/images/favicons/browserconfig.xml" name="msapplication-config">
-    <meta content="#ffffff" name="theme-color">
-    <link href="assets/stylesheets/main.css" rel="stylesheet">
-    <title>Luján Fernaud</title>
+    <meta content="#07061c" name="theme-color">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Jersey+10&family=Pixelify+Sans:wght@400;600&display=swap" rel="stylesheet">
+    <title>Luján H. Fernaud</title>
+    <style>
+      /* The game is 200 game pixels tall and as wide as the window allows,
+         scaled up with hard edges. --gp is one game pixel in CSS pixels. */
+      :root {
+        --ink: #07061c;
+        --dim: #9a93bb;
+        --moon: #f1ead0;
+        --sea-glint: #7fd9e6;
+        --lantern: #f6c76a;
+        --verb: #6a5fa6;
+        --font-pixel: "Pixelify Sans", "Courier New", monospace;
+        --font-title: "Jersey 10", "Pixelify Sans", "Courier New", monospace;
+        --gp: 4px;
+        color-scheme: dark;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; height: 100%; overflow: hidden; }
+      body {
+        /* Above a short stage the sky carries on; below it, the black interface strip. */
+        background: linear-gradient(var(--ink) 50%, #000 50%);
+        color: var(--dim);
+        font-family: var(--font-pixel);
+      }
+
+      .stage {
+        position: fixed;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        background: #000;
+        overflow: hidden;
+        user-select: none;
+        -webkit-user-select: none;
+        touch-action: manipulation;
+      }
+      /* The crosshair is a real cursor, so it never lags a frame behind the mouse
+         and shows over the text too. --cursor and --cursor-hot are set by the script. */
+      @media (hover: hover) and (pointer: fine) {
+        .stage, .stage * { cursor: var(--cursor, crosshair) !important; }
+        .stage.hot, .stage.hot *, .stage button:hover, .stage a:hover { cursor: var(--cursor-hot, crosshair) !important; }
+      }
+      /* Each layer is a small canvas at game resolution. The browser scales it up with hard
+         edges and slides it into place on the graphics card, at less than a game pixel. */
+      .world { position: absolute; inset: 0; overflow: hidden; }
+      .world canvas, .arrow {
+        position: absolute;
+        left: 0;
+        top: 0;
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
+        will-change: transform;
+        pointer-events: none;
+      }
+      .arrow { animation: pulse 1.6s ease-in-out infinite; }
+      @keyframes pulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+      @media (prefers-reduced-motion: reduce) { .arrow { animation: none; } }
+
+      .credits, .sentence, .speech { pointer-events: none; }
+      .credits {
+        position: absolute;
+        top: 4.5%;
+        left: 0;
+        right: 0;
+        margin: 0;
+        text-align: center;
+        font-weight: 400;
+      }
+      .credits .name {
+        display: block;
+        font-family: var(--font-title);
+        font-size: calc(var(--gp) * 20.5 * var(--credits-scale, 1));
+        letter-spacing: 0.03em;
+        line-height: 1.1;
+        color: var(--moon);
+        text-shadow: var(--gp) var(--gp) 0 #000;
+      }
+      .credits .sub {
+        display: block;
+        margin-top: calc(var(--gp) * 2);
+        font-size: calc(var(--gp) * 8.3 * var(--credits-scale, 1));
+        letter-spacing: 0.04em;
+        color: var(--sea-glint);
+        text-shadow: var(--gp) var(--gp) 0 #000;
+      }
+      .sentence {
+        position: absolute;
+        top: 73.6%;
+        left: 0;
+        right: 0;
+        text-align: center;
+        font-size: calc(var(--gp) * 9);
+        color: var(--sea-glint);
+      }
+      .verbs {
+        position: absolute;
+        top: 82%;
+        left: 0;
+        right: 0;
+        display: flex;
+        justify-content: center;
+        gap: calc(var(--gp) * 22);
+      }
+      .verbs button {
+        padding: 0;
+        border: 0;
+        background: none;
+        font-family: var(--font-pixel);
+        font-size: calc(var(--gp) * 9.6);
+        color: var(--verb);
+        cursor: inherit;
+      }
+      .verbs button.on { color: var(--lantern); }
+      /* Tall screens have room below the scene, so the verbs grow into proper thumb targets. */
+      .stage[data-layout="portrait"] .verbs { gap: calc(var(--gp) * 16); }
+      .stage[data-layout="portrait"] .verbs button { font-size: calc(var(--gp) * 13); padding: calc(var(--gp) * 3) 0; }
+      .stage[data-layout="portrait"] .links { font-size: calc(var(--gp) * 8); }
+      .hint {
+        position: absolute;
+        left: 0;
+        right: 0;
+        margin: 0;
+        text-align: center;
+        font-size: calc(var(--gp) * 7.5);
+        color: #4e4880;
+        pointer-events: none;
+      }
+      .stage[data-layout="landscape"] .hint { display: none; }
+      .speech {
+        position: absolute;
+        transform: translate(-50%, -100%);
+        white-space: nowrap;
+        font-size: calc(var(--gp) * 9);
+        line-height: 1.2;
+        text-align: center;
+        color: var(--lantern);
+        text-shadow: var(--gp) var(--gp) 0 #000;
+      }
+      .speech a {
+        pointer-events: auto;
+        color: inherit;
+        cursor: pointer;
+      }
+      .links {
+        position: absolute;
+        top: 92%;
+        left: 0;
+        right: 0;
+        display: flex;
+        justify-content: center;
+        gap: calc(var(--gp) * 12);
+        font-size: calc(var(--gp) * 6.5);
+        letter-spacing: 0.04em;
+      }
+      .links a { color: #4e4880; cursor: pointer; text-underline-offset: 0.2em; }
+      .links a:hover, .links a:focus-visible { color: var(--lantern); }
+    </style>
   </head>
-  
+
   <body>
-    <main class="main-container">
-      <section class="cover">
-        <div class="cover-name-container">
-          <h1 class="cover-name">Luján Fernaud</h1>
-        </div>
-        <hr class="hr-small">
-        <p class="cover-short-description">SOFTWARE DEVELOPER</p>
-
-        <div class="cover-icons">
-          <a class="link-icon" href="https://github.com/lujanfernaud" target="_blank">
-            <svg aria-labelledby="title" class="icon" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <title>GitHub</title>
-              <path
-                d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" />
-            </svg>
-          </a>
-
-          <a class="link-icon" href="https://gist.github.com/lujanfernaud" target="_blank">
-            <svg class="icon" style="isolation:isolate" viewbox="0 0 234.667 234.667" xmlns="http://www.w3.org/2000/svg">
-              <title>GitHub Gists</title>
-              <g clip-path="url(#a)">
-                <path
-                  d="M0 117.333C0 52.575 52.575 0 117.333 0s117.334 52.575 117.334 117.333-52.576 117.334-117.334 117.334C52.575 234.667 0 182.091 0 117.333zm98.222 19.5h-9.555v-9.555h9.555v9.555zm0-28.666h-9.555v9.555h9.555v-9.555zm0-19.111h-9.555v9.555h9.555v-9.555zm0-19.112h-9.555V79.5h9.555v-9.556zm76.445-9.555v114.667c0 5.255-4.3 9.555-9.556 9.555h-47.778v19.111L103 189.389l-14.333 14.333v-19.111H69.556c-5.256 0-9.556-4.3-9.556-9.555V60.389c0-5.256 4.3-9.556 9.556-9.556h95.555c5.256 0 9.556 4.3 9.556 9.556zm-9.556 95.555H69.556v19.112h19.111V165.5h28.666v9.556h47.778v-19.112zm0-95.555h-86v86h86v-86z"
-                  fill-rule="evenodd" />
-              </g>
-            </svg>
-          </a>
-
-          <a class="link-icon link-icon-exercism" href="https://exercism.io/profiles/lujanfernaud" target="_blank">
-            <svg aria-labelledby="title" class="icon icon-exercism" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
-              <title>Exercism</title>
-                <defs />
-                <path
-                  d="M92.8 35.4c-20.5 0-36 6.3-46.6 19.1C35.7 67.2 30.4 85.7 30.4 110v74.2c0 17.2-1.8 30.3-5.6 39.6-3.7 9.3-10.5 17.9-20.4 26-3 2.4-4.4 4.4-4.4 5.9 0 1.6 1.4 3.6 4.3 5.9 10.2 8.3 17.1 17 20.7 26.2 3.7 9.2 5.4 22.3 5.4 39.5v73.8c0 24.5 5.3 43.2 16 55.8C57.1 469.7 72.5 476 92.8 476h18.8c8.1 0 13.2-.4 15.3-1.2 2.2-.8 3.2-2.8 3.2-5.8 0-4.3-2.8-7.1-8.5-8.4l-10.3-2.3c-22.7-5.2-34-27.6-34-67.2v-70.2c0-26.7-6.5-45.4-19.3-56.4l-4.9-4.1c-2.4-2.1-3.6-3.6-3.6-4.7 0-1.2 1.2-2.7 3.6-4.6l4.9-4.2c12.8-10.9 19.3-29.7 19.3-56.3v-70.3c0-23.7 2.8-40.1 8.6-49.2 5.8-9.2 17.7-16.2 36-21.2 5.5-1.6 8.3-4.1 8.3-7.5 0-4.6-6.2-6.9-18.6-6.9l-18.8-.1zm307.6.6c-12.4 0-18.6 2.3-18.6 7 0 3.4 2.8 5.9 8.3 7.4 18.3 5 30.2 12.1 36 21.2 5.7 9.2 8.6 25.6 8.6 49.2v70.3c0 26.6 6.5 45.3 19.3 56.3l4.9 4.1c2.4 1.9 3.6 3.4 3.6 4.7 0 1-1.2 2.6-3.6 4.6L454 265c-12.8 10.9-19.3 29.7-19.3 56.3v70.3c0 39.7-11.3 62-34 67.2l-10.3 2.3c-5.7 1.3-8.5 4.2-8.5 8.5 0 3.1 1.1 5 3.2 5.7 2.2.7 7.2 1.2 15.3 1.2h18.8c20.2 0 35.7-6.3 46.3-19.1 10.7-12.7 16-31.2 16-55.8v-73.8c0-17.2 1.8-30.3 5.4-39.5 3.6-9.2 10.5-17.8 20.7-26.1 2.9-2.4 4.3-4.4 4.3-5.9 0-1.6-1.4-3.6-4.3-5.9-10-8.1-16.8-16.7-20.5-26-3.7-9.2-5.6-22.5-5.6-39.7v-74.1c0-24.3-5.2-42.9-15.8-55.6-10.5-12.7-26-19-46.4-19h-18.9zM163.9 207.7c-31.1 0-56.3 23.7-56.3 52.9h21.7c0-17.9 15.5-32.5 34.6-32.5 19 0 34.5 14.6 34.5 32.5h21.7c0-29.2-25.1-52.9-56.2-52.9zm179.3 0c-31.1 0-56.3 23.7-56.3 52.9h21.7c0-17.9 15.5-32.5 34.6-32.5 19 0 34.6 14.6 34.6 32.5h21.7c0-29.2-25.2-52.9-56.3-52.9zm-136 98.6v12c0 27.2 22.7 49.4 50.4 49.4 27.9 0 50.5-22.2 50.5-49.4v-12h-19.9v12c0 18.7-16.2 30.4-30.6 30.4-14.3 0-31.5-5.8-31.5-30.4v-12h-18.9z" />
-            </svg>
-          </a>
-        </div>
-      </section>
+    <main class="stage" id="stage">
+      <div class="world" role="img" aria-label="A wooden dock at night under a full moon. Nicómedes the fisherman and his cat on the left, two sheds and a sea chest in the middle, music at a beach bar on the right."></div>
+      <h1 class="credits"><span class="name">Luján H. Fernaud</span><span class="sub">Software Engineer</span></h1>
+      <div class="sentence" aria-hidden="true">Walk to</div>
+      <div class="verbs" aria-hidden="true">
+        <button tabindex="-1" type="button" data-verb="Walk to">Walk to</button>
+        <button tabindex="-1" type="button" data-verb="Open">Open</button>
+        <button tabindex="-1" type="button" data-verb="Look at">Look at</button>
+      </div>
+      <div class="speech" hidden></div>
+      <p class="hint" aria-hidden="true">Tap a door, the chest, or anyone on the dock.</p>
+      <nav class="links">
+        <a href="https://github.com/lujanfernaud" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://www.linkedin.com/in/lujanfernaud/" target="_blank" rel="noopener">LinkedIn</a>
+        <a href="https://exercism.org/profiles/lujanfernaud" target="_blank" rel="noopener">Exercism</a>
+      </nav>
     </main>
+
+    <script>
+    (() => {
+      const H = 200, SCENE_H = 144;
+      const WORLD = 960;               // three screens: fishing corner, the dock, the beach bar
+      const DOCK = 320;                // where the middle screen starts
+      const START_X = DOCK + 160;
+      const DOCK_TOP = 124, DOCK_BOTTOM = 141;
+      const WALK_SPEED = 100;          // game pixels per second
+      const STEP_TIME = 0.1;           // seconds per walk frame
+      const P_SKY = 0.15, P_SEA = 0.4; // parallax: how fast far layers scroll
+
+      // Seeded RNG so the scene draws identically every time.
+      function rng(seed) {
+        return () => {
+          seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+          let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+          t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+          return ((t ^ t >>> 14) >>> 0) / 4294967296;
+        };
+      }
+      const hash = (n) => { const s = Math.sin(n * 127.1) * 43758.5453; return s - Math.floor(s); };
+      const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+      const pixelPen = (ctx) => (c, x, y, w = 1, h = 1) => { ctx.fillStyle = c; ctx.fillRect(x | 0, y | 0, w, h); };
+      const offscreen = (w, h) => { const c = document.createElement("canvas"); c.width = w; c.height = h; return c; };
+
+      // ---- Sprites, one char per pixel ----
+
+      // Luján. 44 px tall, sized against Nicómedes, the barman and the dancer.
+      const PAL = {
+        h: "#120e16", H: "#3d3650",           // hair, moonlit hair
+        s: "#efc6a2", S: "#cf9d7d",           // skin, skin shade
+        g: "#15111a", l: "#a8c6e6",           // glasses frame, lens glint
+        m: "#a8624f",                         // mouth
+        c: "#97a87c", C: "#97a87c", d: "#7f9068", // t-shirt, sleeves, folds and hem
+        p: "#7b7e86", P: "#5d6068",           // trousers, far leg
+        b: "#4e5056", B: "#35373c",           // shoes
+        // other characters
+        k: "#2c3a5a", K: "#1e2840",           // fisherman's cap
+        a: "#b8b2a8",                         // grey hair
+        w: "#34507a", W: "#263c5e",           // navy sweater
+        n: "#5a4a3a",                         // brown trousers
+        e: "#eceaf2", f: "#9aa0b8", F: "#6a7088", o: "#e8a040", x: "#111111", // gull
+      };
+
+      const FRONT = [
+        "....hhhhh....",
+        "...hhhhhhH...",
+        "...hhhhhhhH..",
+        "...hssssshh..",
+        "...hsssssh...",
+        "...sglglgs...",
+        "...SsssssS...",   // ears
+        "...SssSssS...",
+        "....sssss....",
+        "....smmss....",
+        ".....sss.....",   // jaw rounded off at the corners
+        ".....sss.....",
+        ".....SsS.....",
+        "..cccdddccc..",
+        ".CCcccccccCC.",
+        ".CCcccccccCC.",
+        ".CCcccccccCC.",
+        ...Array(9).fill(".sScccccccSs."),
+        ".ssdddddddss.",
+        ".sspppppppss.",
+        ...Array(6).fill("...pppPppp..."),
+        ...Array(7).fill("...ppp.ppp..."),
+        "..bbbb.bbbb..",
+        "..bbbb.bbbb..",
+        "..BBBB.BBBB..",
+      ];
+
+      // Side view facing right. Upper body shared, legs per pose.
+      const SIDE_TOP = [
+        "...hhhhh.....",
+        "..hhhhhhhH...",
+        "..hhhhhhhhH..",
+        "..hhhhsssss..",
+        "..hhhssssss..",
+        "..hhsgglgss..",
+        "..hhSsssssss.",   // ear
+        "...hSsssssss.",
+        "....SsssssS..",
+        "....sssssm...",
+        ".....sssss...",   // softer jaw line
+        "......sss....",
+        ".....sss.....",
+        "...ccccccc...",
+        ...Array(3).fill("...ccdddcc..."),
+        ...Array(9).fill("...ccsSscc..."),
+        "...ddsssd....",
+        "...ppsssp....",
+      ];
+      // Legs one pixel wider and shoes two pixels longer than the upper body suggests,
+      // so the side view reads as a grown man rather than a stick figure.
+      const STAND_LEGS = [
+        ...Array(14).fill("...ppppp....."),
+        "...bbbbbbbb..",
+        "...BBBBBBBB..",
+      ];
+      const STRIDE_LEGS = [
+        ...Array(3).fill("...ppppppp..."),
+        ...Array(4).fill("..PPPP.pppp.."),
+        ...Array(3).fill(".PPPP...pppp."),
+        ...Array(4).fill("PPPP....pppp."),
+        "bbbbb...bbbbb",
+        "BBBBB...BBBBB",
+      ];
+      // The same stride with the other leg forward.
+      const STRIDE_LEGS_B = STRIDE_LEGS.map((row) => row.replace(/[pP]/g, (ch) => (ch === "p" ? "P" : "p")));
+      const PASSING_LEGS = [
+        ...Array(7).fill("...pPppp....."),
+        ...Array(7).fill("...pPPpp....."),
+        "...bbbbbbbb..",
+        "...BBBBBBBB..",
+      ];
+      const HERO_ROWS = {
+        front: FRONT,
+        stand: [...SIDE_TOP, ...STAND_LEGS],
+        strideA: [...SIDE_TOP, ...STRIDE_LEGS],
+        strideB: [...SIDE_TOP, ...STRIDE_LEGS_B],
+        passing: [...SIDE_TOP, ...PASSING_LEGS],
+      };
+      const WALK_CYCLE = [["strideA", 0], ["passing", 0], ["strideB", 0], ["passing", 0]];
+      const SPRITE_H = FRONT.length;
+
+      // The fisherman, seen from behind, sitting on a crate.
+      const FISHERMAN = [
+        "....kkkkk....",
+        "...kkkkkkk...",
+        "..KKKKKKKKK..",
+        "...aaaaaaa...",
+        "...aaaaaaa...",
+        "...saaaaas...",
+        "....sssss....",
+        "..wwwwwwwww..",
+        ".wwwwwwwwwww.",
+        "wwwwwwwwwwwww",
+        "wwwwWwwwWwwww",
+        "wwwwWwwwWwwww",
+        "wwwwWwwwWwwww",
+        "wwwwwwwwwwwww",
+        ".wwwwwwwwwww.",
+        ".wwwwwwwwwww.",
+        ".WWWWWWWWWWW.",
+        ".nnnnnnnnnnn.",
+        "nnnnnnnnnnnnn",
+      ];
+
+      // The seagull, facing right.
+      const GULL_PERCHED = [
+        "....ee..",
+        "...exeoo",
+        "..eee...",
+        "feeee...",
+        "Fffeee..",
+        ".Fffe...",
+        "...o.o..",
+      ];
+      const GULL_WINGS_UP = [
+        "F.......F",
+        ".f.....f.",
+        "..feeef..",
+        "...eeeo..",
+      ];
+      const GULL_WINGS_DOWN = [
+        "...eeeo..",
+        "..feeef..",
+        ".f.....f.",
+        "F.......F",
+      ];
+
+      // Bake each sprite once, facing both ways, so a frame is a few drawImage calls.
+      function bake(rows) {
+        const sprite = {};
+        [1, -1].forEach((dir) => {
+          const c = offscreen(rows[0].length, rows.length);
+          const px = pixelPen(c.getContext("2d"));
+          rows.forEach((row, r) => [...row].forEach((ch, i) => {
+            if (ch !== ".") px(PAL[ch], dir === 1 ? i : row.length - 1 - i, r);
+          }));
+          sprite[dir] = c;
+        });
+        return sprite;
+      }
+      const HERO = Object.fromEntries(Object.entries(HERO_ROWS).map(([pose, rows]) => [pose, bake(rows)]));
+      const FISHER_SPRITE = bake(FISHERMAN);
+      const GULL = { perched: bake(GULL_PERCHED), up: bake(GULL_WINGS_UP), down: bake(GULL_WINGS_DOWN) };
+
+      // Logos as worn paint. L = light paint, B = blue paint, . = bare wood.
+      const GITHUB = [
+        "....LLLLL....",
+        "..LLLLLLLLL..",
+        ".LL.LLLLL.LL.",
+        ".LL.......LL.",
+        "LL.........LL",
+        "LL.........LL",
+        "LL.........LL",
+        "LLL.......LLL",
+        "LLLL.....LLLL",
+        ".L..L...LLLL.",
+        ".LL.....LLLL.",
+        "..LLL...LLL..",
+        "....L...L....",
+      ];
+      const LINKEDIN = [
+        ".BBBBBBBBB.",
+        "BBBBBBBBBBB",
+        "BWWBBBBBBBB",
+        "BBBBBBBBBBB",
+        "BWWBWWWWWBB",
+        "BWWBWWBBWWB",
+        "BWWBWWBBWWB",
+        "BWWBWWBBWWB",
+        "BWWBWWBBWWB",
+        "BBBBBBBBBBB",
+        ".BBBBBBBBB.",
+      ];
+      const EXERCISM = [
+        ".LL...LL.",
+        ".L.....L.",
+        "L.......L",
+        ".L.....L.",
+        ".LL...LL.",
+      ];
+
+      // A soft lantern glow, baked once and drawn with varying opacity to flicker.
+      const GLOW = (() => {
+        const c = offscreen(37, 37);
+        const px = pixelPen(c.getContext("2d"));
+        for (let y = 0; y < 37; y++) {
+          for (let x = 0; x < 37; x++) {
+            const d = Math.hypot(x - 18, (y - 18) * 0.9);
+            if (d < 7) px("rgba(255,196,110,0.5)", x, y);
+            else if (d < 12 && (x + y) % 2 === 0) px("rgba(255,186,96,0.4)", x, y);
+            else if (d < 17 && (x + y) % 4 === 0) px("rgba(255,176,90,0.3)", x, y);
+          }
+        }
+        return c;
+      })();
+
+      // ---- World layout ----
+
+      const CHEST_X = DOCK + 124, CHEST_W = 20;
+      const GULL_POST = { x: DOCK + 208, y: 103 };
+      const LANTERNS = [[DOCK + 55, 82], [DOCK + 264, 82], [255, 79]];
+      const wireY = (x) => { const u = (x - 663) / 127; return 63 + 9 * u + 10 * Math.sin(Math.PI * u); };
+      const BULBS = [];
+      for (let x = 668; x < 788; x += 7) BULBS.push([x, Math.round(wireY(x)) + 1]);
+      const BULB_COLORS = ["#ffd46b", "#ff7a6b", "#7fd9e6", "#b4f08a"];
+
+      let viewW = 320;
+      let TOP = 0;      // extra sky above the scene on tall screens, in game pixels
+      let BOTTOM = 0;   // extra interface strip below it
+      const sky = { canvas: null, moonX: 0, stars: [], clouds: [] };
+      const sea = { canvas: null, islandX: 0, lighthouseX: 0, glints: [] };
+      const MOON_Y = 46, MOON_R = 13, HORIZON = 88;
+
+      const clampCam = (x) => clamp(x, 0, WORLD - viewW);
+      const startCam = () => clampCam(START_X - viewW / 2);
+
+      function paintSky() {
+        const w = viewW + Math.ceil((WORLD - viewW) * P_SKY);
+        sizeLayer(skyL, viewW + 2, TOP + HORIZON);
+        skyArt.width = w;
+        skyArt.height = TOP + HORIZON;
+        const c = skyArt;
+        const skyCtx = skyArt.getContext("2d");
+        skyCtx.translate(0, TOP);
+        const px = pixelPen(skyCtx);
+        const R = rng(1987);
+        px("#07061c", 0, -TOP, w, TOP);
+        // The moon sits up and to the right of the credits when the page opens.
+        const MX = Math.round(startCam() * P_SKY + viewW / 2 + 68);
+
+        const bands = [[0, "#07061c"], [12, "#0b0a26"], [24, "#100f31"], [36, "#16153d"], [48, "#1d1b4a"], [60, "#262357"], [70, "#302b62"], [79, "#3c346c"]];
+        bands.forEach(([y0, col], i) => px(col, 0, y0, w, (bands[i + 1] ? bands[i + 1][0] : HORIZON) - y0));
+        bands.slice(1).forEach(([b, col]) => {
+          for (let x = 0; x < w; x++) {
+            if (x % 2 === 0) px(col, x, b - 1);
+            if (x % 4 === 1) px(col, x, b - 2);
+          }
+        });
+
+        for (let dy = -MOON_R - 5; dy <= MOON_R + 5; dy++) {
+          for (let dx = -MOON_R - 5; dx <= MOON_R + 5; dx++) {
+            const d = Math.sqrt(dx * dx + dy * dy);
+            if (d > MOON_R + 0.4 && d <= MOON_R + 3 && (dx + dy) % 2 === 0) px("#4a4384", MX + dx, MOON_Y + dy);
+            else if (d > MOON_R + 3 && d <= MOON_R + 5 && (dx + dy) % 4 === 0) px("#3f397a", MX + dx, MOON_Y + dy);
+          }
+        }
+
+        const stars = [];
+        const count = Math.round((90 * w * (76 + TOP)) / (320 * 76));
+        for (let i = 0; i < count; i++) {
+          const x = (R() * w) | 0, y = ((R() * (76 + TOP)) | 0) - TOP;
+          if (Math.hypot(x - MX, y - MOON_Y) < MOON_R + 8) continue;
+          const bright = R() < 0.08;
+          px(bright ? "#ffffff" : ["#cfd6ff", "#8e93c8", "#5d5f99", "#5d5f99"][(R() * 4) | 0], x, y);
+          if (bright) { px("#7e84c4", x - 1, y); px("#7e84c4", x + 1, y); px("#7e84c4", x, y - 1); px("#7e84c4", x, y + 1); }
+          if (R() < 0.3) stars.push({ x, y, phase: R() * 6.3, rate: 0.6 + R() * 1.6 });
+        }
+
+        for (let dy = -MOON_R; dy <= MOON_R; dy++) {
+          for (let dx = -MOON_R; dx <= MOON_R; dx++) {
+            if (dx * dx + dy * dy > MOON_R * MOON_R + MOON_R * 0.6) continue;
+            let col = "#efe8cc";
+            if (dx < -MOON_R + 4 && dx + dy < -MOON_R + 2) col = "#cfc7a8";
+            else if (dx < -MOON_R + 3) col = "#ddd5b6";
+            px(col, MX + dx, MOON_Y + dy);
+          }
+        }
+        [[-4, -5, 3], [3, 2, 4], [-2, 6, 2], [6, -6, 2], [-7, 1, 2]].forEach(([dx, dy, s]) => px("#d8d0b0", MX + dx, MOON_Y + dy, s, s - 1 || 1));
+
+        const clouds = [];
+        for (let i = 0; i < Math.ceil(w / 70); i++) {
+          clouds.push({ x: R() * w, y: 22 + ((R() * 42) | 0), len: 40 + ((R() * 36) | 0), speed: 1.5 + R() * 2.5 });
+        }
+
+        cloudLayers.forEach((L) => L.c.remove());
+        cloudLayers.length = 0;
+        clouds.forEach((cl) => {
+          const L = makeLayer();
+          worldEl.insertBefore(L.c, cloudSlot.c);
+          sizeLayer(L, cl.len, 4);
+          cl.layer = L;
+          cl.lit = null;
+          cloudLayers.push(L);
+        });
+        Object.assign(sky, { canvas: c, moonX: MX, stars, clouds });
+      }
+
+      function paintSea() {
+        const w = viewW + Math.ceil((WORLD - viewW) * P_SEA);
+        sizeLayer(seaL, viewW + 2, 116 - HORIZON + 30);
+        seaArt.width = w;
+        seaArt.height = 116 - HORIZON + 30;
+        const c = seaArt;
+        const ctx = seaArt.getContext("2d");
+        ctx.translate(0, -(HORIZON - 30)); // the layer covers y 58 to 116
+        const px = pixelPen(ctx);
+        const R = rng(2024);
+        const IX = Math.round(startCam() * P_SEA + viewW / 2 - 15);
+        const GL = IX - 53, GR = IX + 53;
+
+        const rows = [[HORIZON, "#2a3368"], [92, "#1d2756"], [98, "#162049"], [106, "#111a3e"]];
+        rows.forEach(([y0, col], i) => px(col, 0, y0, w, (rows[i + 1] ? rows[i + 1][0] : 116) - y0));
+        px("#4b4f8c", 0, HORIZON, w, 1);
+
+        // La Gomera: sheer cliffs at both ends, a plateau rising to Garajonay,
+        // ravines notched into the rim, a cloud resting on the top.
+        const RAVINES = [-40, -29, -14, 5, 21, 41].map((d) => IX + d);
+        const gomera = (x) => {
+          if (x < GL + 12) return 10 * Math.sqrt((x - GL) / 12);
+          if (x > GR - 12) return 10 * Math.sqrt((GR - x) / 12);
+          const notch = RAVINES.includes(x) ? 1 : 0;
+          const t = (x - GL - 12) / (GR - GL - 24);
+          return 11 + 5 * Math.sin(Math.PI * t) + Math.sin(t * 17) - notch;
+        };
+        for (let x = GL; x <= GR; x++) {
+          const h = Math.round(gomera(x));
+          if (h <= 0) continue;
+          px("#15132f", x, HORIZON - h, 1, h);
+          if (x > GR - 12) px("#1e1b40", x, HORIZON - h, 1, h);
+          if (RAVINES.includes(x)) px("#100e26", x, HORIZON - h + 2, 1, h - 3);
+        }
+        for (let x = IX - 13; x < IX + 35; x++) {
+          const top = HORIZON - Math.round(gomera(x));
+          if ((x * 7) % 11 < 8) px("#2a2660", x, top - 1, 1, 2);
+          if (x > IX - 5 && x < IX + 25 && (x * 5) % 7 < 4) px("#3a3574", x, top - 2);
+        }
+        const palmX = IX - 25, palmY = HORIZON - Math.round(gomera(IX - 28)) - 7;
+        [[-3, 7], [-2, 6], [-2, 5], [-1, 4], [-1, 3], [0, 2], [0, 1]].forEach(([dx, dy]) => px("#15132f", palmX + dx, palmY + dy));
+        [[-6, 2], [-5, 1], [-4, 0], [-3, -1], [-2, -1], [-1, 0], [1, 0], [2, -1], [3, -1], [4, 0], [5, 1], [6, 2], [-3, 1], [3, 1], [0, -1]]
+          .forEach(([dx, dy]) => px("#15132f", palmX + dx, palmY + dy));
+        [[40, 87], [42, 86], [43, 87], [45, 87]].forEach(([dx, y]) => px("#b88a46", IX + dx, y)); // San Sebastián lights
+        for (let x = GL + 2; x <= GR - 2; x++) {
+          px("#121a42", x, HORIZON + 1);
+          if (x % 2 === 0) px("#121a42", x, HORIZON + 2);
+          if (x % 4 === 1 && x > GL + 8 && x < GR - 8) px("#121a42", x, HORIZON + 3);
+        }
+
+        // A lighthouse on a rock, seen once you reach the beach bar.
+        const LX = w - Math.round(viewW * 0.1);
+        px("#15132f", LX - 7, 85, 16, 3);
+        px("#15132f", LX - 4, 83, 10, 2);
+        px("#d8d0c0", LX, 70, 4, 13);
+        px("#a9a294", LX + 3, 70, 1, 13);
+        px("#a33a2e", LX, 73, 4, 2);
+        px("#a33a2e", LX, 78, 4, 2);
+        px("#2a2640", LX - 1, 67, 6, 3);
+        px("#1a1630", LX, 65, 4, 2);
+
+        const glints = [];
+        for (let i = 0; i < w * 0.6; i++) {
+          glints.push({ x: (R() * w) | 0, y: HORIZON + 1 + ((R() * 27) | 0), w: 2 + ((R() * 6) | 0), phase: R() * 6.3, rate: 0.8 + R() * 1.4, dark: R() < 0.4 });
+        }
+
+        Object.assign(sea, { canvas: c, islandX: IX, lighthouseX: LX, glints });
+      }
+
+      // ---- Layers: one small canvas each, moved by the browser rather than redrawn ----
+
+      const worldEl = document.querySelector("#stage .world");
+      function makeLayer() {
+        const c = document.createElement("canvas");
+        worldEl.append(c);
+        return { c, ctx: c.getContext("2d"), w: 0, h: 0, tf: "" };
+      }
+      function sizeLayer(L, w, h) {
+        if (L.c.width !== w || L.c.height !== h) { L.c.width = w; L.c.height = h; }
+        L.w = w; L.h = h;
+        L.c.style.width = `${w * gp}px`;
+        L.c.style.height = `${h * gp}px`;
+        L.tf = "";
+      }
+      // x and y in game pixels from the stage's top left, rounded to a device pixel.
+      function place(L, x, y) {
+        const dpr = window.devicePixelRatio || 1;
+        const tf = `translate3d(${Math.round(x * gp * dpr) / dpr}px,${Math.round(y * gp * dpr) / dpr}px,0)`;
+        if (tf !== L.tf) L.c.style.transform = L.tf = tf;
+      }
+      // Bottom to top. Each parallax layer is one canvas a pixel wider than the screen: redrawn
+      // at game resolution at a whole-pixel offset, then slid by the leftover fraction.
+      // The sprites in between are small and only move.
+      const NEAR_TOP = 30;               // nothing on the dock reaches higher than the roof ridges
+      const skyL = makeLayer();
+      const cloudLayers = [];
+      const cloudSlot = makeLayer();     // marks where clouds go in the stack
+      cloudSlot.c.width = cloudSlot.c.height = 0;
+      const seaL = makeLayer(), shipL = makeLayer();
+      const nearL = makeLayer(), gullL = makeLayer(), heroL = makeLayer();
+      const skyArt = offscreen(1, 1), seaArt = offscreen(1, 1);
+
+      // Everything that sits on the dock and never moves. Repainted only when a door opens.
+      const near = offscreen(WORLD, H);
+      const opened = { github: false, linkedin: false, exercism: false };
+
+      function paintNear() {
+        const ctx = near.getContext("2d");
+        ctx.clearRect(0, 0, WORLD, H);
+        const R = rng(1987);
+        const px = pixelPen(ctx);
+        const pick = (arr) => arr[(R() * arr.length) | 0];
+
+        const glow = (lx, ly, x0, x1, reach = 18) => {
+          for (let gy = ly - reach + 2; gy <= ly + reach; gy++) {
+            for (let gx = Math.max(x0, lx - reach); gx <= Math.min(x1, lx + reach); gx++) {
+              const d = Math.hypot(gx - lx, (gy - ly) * 0.9);
+              if (d < reach * 0.39) px("rgba(255,196,110,0.22)", gx, gy);
+              else if (d < reach * 0.67 && (gx + gy) % 2 === 0) px("rgba(255,186,96,0.18)", gx, gy);
+              else if (d < reach * 0.95 && (gx + gy) % 4 === 0) px("rgba(255,176,90,0.14)", gx, gy);
+            }
+          }
+        };
+
+        // Dock: horizontal planks, deeper rows nearer the viewer.
+        px("#3a2925", 0, 116, WORLD, SCENE_H - 116);
+        px("#5e4638", 0, 116, WORLD, 1);
+        px("#4a362d", 0, 117, WORLD, 1);
+        let y = 118;
+        [2, 3, 3, 4, 4, 5, 5].forEach((h) => {
+          px("#21171a", 0, y, WORLD, 1);
+          let x = (R() * 30) | 0;
+          while (x < WORLD) {
+            px("#21171a", x, y + 1, 1, h - 1);
+            if (h > 3) { px("#80705e", x - 2, y + 2); px("#80705e", x + 2, y + 2); }
+            x += 22 + ((R() * 30) | 0);
+          }
+          for (let i = 0; i < 54; i++) px(R() < 0.5 ? "#30221e" : "#47332a", (R() * WORLD) | 0, y + 1 + ((R() * (h - 1)) | 0), 2 + ((R() * 6) | 0), 1);
+          y += h;
+        });
+
+        // Mooring posts at the back edge.
+        [40, 200, DOCK + 116, GULL_POST.x - 2, 930].forEach((x) => {
+          px("#3f2d26", x, 104, 4, 14);
+          px("#6a5244", x + 3, 104, 1, 14);
+          px("#7c6454", x, 103, 4, 1);
+          px("#8a7a5a", x - 1, 109, 6, 2);
+          px("#5e5240", x - 1, 110, 6, 1);
+        });
+
+        function paintLogo(logo, lx, ly) {
+          logo.forEach((row, r) => [...row].forEach((ch, c) => {
+            if (ch === ".") return;
+            if (R() < 0.07) return; // worn paint
+            px(ch === "B" ? "#2b68ad" : "#e6dcc4", lx + c, ly + r);
+          }));
+        }
+
+        // A derelict shed with a painted door. hinge: side the door swings on.
+        function shed(x0, { logo, hinge, lit, open }) {
+          const SW = 62, top = 64, base = 122;
+          const cx = x0 + 31;
+          const woods = ["#4a3329", "#3f2b24", "#523a2e", "#45302a"];
+          for (let x = x0; x < x0 + SW; x += 5) {
+            px(pick(woods), x, top, 5, base - top);
+            px("#1c1316", x, top, 1, base - top);
+            for (let i = 0; i < 4; i++) px(R() < 0.5 ? "#33231e" : "#5a4234", x + 1 + ((R() * 4) | 0), top + ((R() * (base - top)) | 0), 1, 2 + ((R() * 4) | 0));
+          }
+          px("#120c10", x0 + 6, base - 7, 3, 7);        // rotted board
+          px("#120c10", x0 + SW - 9, base - 4, 2, 4);
+          px("#120c10", x0 + 51, top + 14, 3, 2);       // knot hole
+          [top + 6, base - 6].forEach((ry) => { px("#2f2120", x0, ry, SW, 2); px("#5a4234", x0, ry, SW, 1); });
+          px("#6a5a6e", lit === "right" ? x0 + SW - 1 : x0, top, 1, base - top); // moonlit edge
+
+          const dx = x0 + 20, dw = 22, dt = 70;
+          px("#1a1114", dx - 1, dt - 1, dw + 2, base - dt + 1);
+          if (open) {
+            px("#140b0a", dx, dt, dw, base - dt);
+            for (let i = 0; i < 10; i++) px(`rgba(255,180,90,${0.04 + i * 0.025})`, dx + 1, dt + 4 + i * 4, dw - 2, base - (dt + 4 + i * 4));
+            px("#2a1a12", dx + 3, 100, 12, 2);            // a desk inside
+            px("#2a1a12", dx + 4, 102, 1, 20);
+            px("#2a1a12", dx + 13, 102, 1, 20);
+            px("#1d2d48", dx + 6, 92, 7, 6);              // a lit screen
+            px("#6fb3e6", dx + 7, 93, 5, 4);
+            const hx = hinge === "right" ? dx + dw - 4 : dx; // the door, swung in
+            px("#4a3324", hx, dt, 4, base - dt);
+            px("#5e412f", hinge === "right" ? hx : hx + 3, dt, 1, base - dt);
+          } else {
+            let bx = dx;
+            [6, 5, 5, 6].forEach((w, i) => {
+              px(["#6b4b36", "#634431", "#6e4e38", "#5f412f"][i], bx, dt, w, base - dt);
+              if (i) px("#3a271f", bx, dt, 1, base - dt);
+              bx += w;
+            });
+            [dt + 4, dt + 25, base - 8].forEach((ry) => { px("#7a5840", dx, ry, dw, 3); px("#8f6c50", dx, ry, dw, 1); px("#2c1d18", dx, ry + 3, dw, 1); });
+            const hingeX = hinge === "left" ? dx : dx + dw - 3;
+            [dt + 5, base - 7].forEach((hy) => px("#1a1414", hingeX, hy, 3, 1));
+            px("#d2a957", hinge === "left" ? dx + dw - 4 : dx + 3, dt + 30, 1, 3);
+            px("#6e5226", hinge === "left" ? dx + dw - 4 : dx + 3, dt + 33);
+            paintLogo(logo, dx + Math.floor((dw - logo[0].length) / 2), dt + 9);
+          }
+
+          for (let ry = 36; ry <= 66; ry++) {
+            const half = Math.round(3 + ((ry - 36) / 30) * 35);
+            px(ry % 3 === 0 ? "#1a1422" : "#2a2133", cx - half, ry, half * 2 + 1, 1);
+            px("#120d18", cx - half, ry, 1, 1);
+            px("#120d18", cx + half, ry, 1, 1);
+            px("#5a4c6c", lit === "right" ? cx + half - 1 : cx - half + 1, ry, 1, 1);
+          }
+          px("#3a2e44", cx - 3, 35, 7, 2);              // ridge cap
+          px("#0d0a12", cx - 9, 46, 4, 2);              // missing shingles
+          px("#0d0a12", cx + 12, 55, 3, 2);
+          px("#0d0a12", cx - 20, 60, 2, 1);
+          const ex = lit === "right" ? cx - 36 : cx + 36, dir = lit === "right" ? 1 : -1;
+          for (let i = 0; i < 7; i++) px("#4a3a3a", ex + dir * i, 66 + i); // loose board off the eave
+          px("#140f18", x0, 67, SW, 2);
+
+          const lnx = hinge === "left" ? dx + dw + 4 : dx - 7;
+          px("#1a1114", hinge === "left" ? lnx - 3 : lnx + 1, 77, 5, 1);
+          px("#1a1114", lnx, 77, 3, 2);
+          px("#2a1e1a", lnx - 1, 79, 5, 1);
+          px("#2a1e1a", lnx - 1, 85, 5, 1);
+          glow(lnx + 1, 82, x0 - 8, x0 + SW + 8);
+          if (open) {
+            for (let sy = base; sy < SCENE_H; sy++) {
+              const grow = (sy - base) * 0.6;
+              for (let sx = Math.round(dx - grow); sx < Math.round(dx + dw + grow); sx++) {
+                const edge = Math.min(sx - (dx - grow), dx + dw + grow - sx);
+                if (edge > 4) px("rgba(255,170,80,0.16)", sx, sy);
+                else if ((sx + sy) % 2 === 0) px("rgba(255,170,80,0.14)", sx, sy);
+              }
+            }
+          }
+        }
+
+        // A sea chest at the back of the dock, Exercism's braces painted on the front.
+        function chest(open) {
+          const x0 = CHEST_X, cw = CHEST_W;
+          px("rgba(10,6,12,0.55)", x0 - 1, 121, cw + 2, 2);
+          if (open) {
+            px("#3a271f", x0, 101, cw, 9);
+            px("#2a1a14", x0 + 1, 102, cw - 2, 7);
+            px("#2a2a30", x0 + 2, 101, 2, 9);
+            px("#2a2a30", x0 + cw - 4, 101, 2, 9);
+            px("#7a5840", x0, 110, cw, 1);
+            px("#1c120e", x0 + 1, 111, cw - 2, 3);
+            px("#ffd46b", x0 + 4, 111, 3, 1);
+            px("#e6dcc4", x0 + 9, 111, 5, 2);               // rolled-up exercises
+            px("#ffd46b", x0 + 15, 112, 2, 1);
+            glow(x0 + cw / 2, 108, x0 - 14, x0 + cw + 14, 14);
+          } else {
+            px("#5e412f", x0, 109, cw, 5);
+            px("#7a5840", x0 + 1, 109, cw - 2, 1);
+            px("#2a2a30", x0 + 2, 109, 2, 5);
+            px("#2a2a30", x0 + cw - 4, 109, 2, 5);
+            px("#1a1114", x0, 113, cw, 1);
+            px("#d2a957", x0 + 9, 111, 2, 3);
+          }
+          px("#5a3d2c", x0, 114, cw, 8);
+          px("#6e4c36", x0, 114, cw, 1);
+          px("#2c1d18", x0, 121, cw, 1);
+          px("#2a2a30", x0 + 2, 114, 2, 7);
+          px("#2a2a30", x0 + cw - 4, 114, 2, 7);
+          px("#6a5a6e", x0 + cw - 1, open ? 110 : 109, 1, open ? 11 : 12);
+          paintLogo(EXERCISM, x0 + 6, 115);
+        }
+
+        function barrel(x0, top) {
+          for (let i = 0; top + i < 122; i++) {
+            const w = 9 + (i > 2 && i < 11 ? 1 : 0);
+            px(i % 2 ? "#4c3529" : "#553b2e", x0 - (w >> 1) + 4, top + i, w, 1);
+          }
+          [top + 1, top + 6, top + 11].forEach((hy) => px("#2a2a30", x0, hy, 10, 1));
+          px("#6e5a4a", x0 + 7, top + 1, 1, 122 - top - 1);
+        }
+
+        // The middle: two sheds, a barrel, a crate and the chest.
+        shed(DOCK + 8, { logo: GITHUB, hinge: "left", lit: "right", open: opened.github });
+        shed(DOCK + 250, { logo: LINKEDIN, hinge: "right", lit: "left", open: opened.linkedin });
+        barrel(DOCK + 75, 111);
+        px("#4a3628", DOCK + 236, 113, 11, 11);
+        px("#6a523e", DOCK + 236, 113, 11, 1);
+        px("#2c1f18", DOCK + 236, 113, 1, 11);
+        px("#2c1f18", DOCK + 241, 113, 1, 11);
+        px("#2c1f18", DOCK + 236, 118, 11, 1);
+        chest(opened.exercism);
+
+        // The left: a fishing corner with a brazier, a lamp post, a crate seat and a bucket.
+        px("#2a2228", 250, 72, 2, 50);
+        px("#2a2228", 250, 72, 6, 1);
+        px("#2a2228", 255, 72, 1, 3);
+        px("#1a1114", 253, 75, 5, 1);
+        px("#2a1e1a", 253, 76, 5, 1);
+        px("#2a1e1a", 253, 82, 5, 1);
+        glow(255, 79, 228, 282);
+        px("#2a2a30", 86, 109, 13, 13);
+        px("#3a3a44", 86, 109, 13, 1);
+        px("#1a1a20", 86, 115, 13, 1);
+        px("#5a3a2a", 90, 117, 3, 2);
+        [89, 92, 95].forEach((hx) => px("#ff9a3c", hx, 112));
+        px("#5a4030", 115, 114, 16, 8);
+        px("#7a5840", 115, 114, 16, 1);
+        px("#2c1f18", 115, 117, 16, 1);
+        px("#2c1f18", 115, 114, 1, 8);
+        px("#2c1f18", 130, 114, 1, 8);
+        px("#5a6070", 136, 116, 7, 6);
+        px("#7a8090", 136, 116, 7, 1);
+        px("#b8c8d8", 137, 114, 1, 2);
+        px("#b8c8d8", 140, 115, 2, 1);
+        px("#8a7a5a", 196, 119, 9, 2);                    // coiled rope
+        px("#6e6048", 197, 118, 7, 1);
+
+        // The right: a beach bar strung with lights, a barrel for the musician, two stools.
+        px("#2a2228", 662, 62, 2, 60);
+        for (let x = 663; x < 790; x++) px("#1a1420", x, Math.round(wireY(x)));
+        barrel(695, 108);
+        px("#2a1c1e", 790, 78, 90, 44);
+        px("#1a1216", 796, 84, 78, 18);
+        px("rgba(255,180,90,0.12)", 796, 84, 78, 18);
+        px("#4a3329", 840, 91, 32, 1);
+        [842, 846, 850, 855, 860, 865].forEach((bx, i) => {
+          const col = ["#3f7a4a", "#a8c6e6", "#7a3a2e", "#d2a957"][i % 4];
+          px(col, bx, 87, 2, 4);
+          px(col, bx + (i % 2 ? 1 : 0), 85, 1, 2);
+        });
+        for (let x = 786; x < 884; x++) {
+          const col = Math.floor((x - 786) / 6) % 2 ? "#e9dfc4" : "#b8423a";
+          px(col, x, 72, 1, 9);
+          const k = (x - 786) % 6;
+          if (k > 0 && k < 5) px(col, x, 81);
+        }
+        px("#1a1422", 784, 70, 102, 2);
+        px("#3a2a24", 788, 82, 2, 20);
+        px("#3a2a24", 878, 82, 2, 20);
+        px("#6b4b36", 786, 102, 98, 20);
+        px("#8f6c50", 784, 101, 102, 2);
+        for (let x = 793; x < 884; x += 7) px("#4a3226", x, 103, 1, 19);
+        px("#7a5840", 786, 110, 98, 2);
+        [806, 852].forEach((sx) => {
+          px("#2a2228", sx, 111, 7, 2);
+          px("#2a2228", sx + 3, 113, 1, 9);
+          px("#2a2228", sx + 1, 118, 5, 1);
+        });
+      }
+
+      // ---- Things you can click ----
+
+      const PLACES = {
+        github: {
+          name: "GitHub door",
+          url: "https://github.com/lujanfernaud",
+          box: [DOCK + 27, 69, DOCK + 51, 122],
+          spot: { x: DOCK + 56, feet: 127, dir: -1 },
+          says: "Have a look around.",
+          look: "My code lives in there.",
+        },
+        linkedin: {
+          name: "LinkedIn door",
+          url: "https://www.linkedin.com/in/lujanfernaud/",
+          box: [DOCK + 269, 69, DOCK + 293, 122],
+          spot: { x: DOCK + 264, feet: 127, dir: 1 },
+          says: "Let's connect.",
+          look: "Where I keep my work history.",
+        },
+        exercism: {
+          name: "Exercism chest",
+          url: "https://exercism.org/profiles/lujanfernaud",
+          box: [CHEST_X - 1, 101, CHEST_X + CHEST_W + 1, 122],
+          spot: { x: CHEST_X + CHEST_W + 8, feet: 127, dir: -1 },
+          says: "Practice makes better.",
+          look: "Old exercises. I still solve a few.",
+        },
+      };
+
+      // People and props on the dock, in world coordinates.
+      const FOLK = [
+        { name: "Nicómedes", box: [114, 92, 132, 122], look: "Nicómedes. Forty years on this dock, still waiting for the big one." },
+        { name: "cat", box: [156, 112, 170, 122], look: "She's not waiting for him. She's waiting for the bucket." },
+        { name: "brazier", box: [85, 102, 100, 122], look: "Smells like grilled sardines." },
+        { name: "boat", box: [20, 104, 80, 116], look: "The Dolores. She floats. Mostly." },
+        { name: "musician", box: [692, 85, 709, 120], look: "He knows one song. He plays it very well." },
+        { name: "dancer", box: [727, 86, 746, 124], look: "She's been dancing since sunset." },
+        { name: "barman", box: [816, 84, 832, 101], look: "Best barraquito on the island." },
+        { name: "beach bar", box: [784, 70, 886, 122], look: "Open until the last song." },
+      ];
+
+      const inBox = ([x0, y0, x1, y1], x, y) => x >= x0 && x <= x1 && y >= y0 && y <= y1;
+
+      // x and y are screen coordinates. Each layer scrolls at its own speed.
+      function hotspotAt(x, y) {
+        if (y >= SCENE_H) return null;
+        const wx = x + camX;
+        if (Math.abs(wx - hero.x) <= 6 && y >= hero.feet - SPRITE_H && y <= hero.feet) {
+          return { name: "Luján", verb: "Look at", look: "That's me. I build things with Ruby and Rails.", at: hero.x };
+        }
+        if (Math.abs(wx - gull.x) <= 5 && y >= gull.y - 8 && y <= gull.y + 2) {
+          return { name: "seagull", verb: "Look at", look: gull.flying ? "Show-off." : "She thinks the dock is hers. She might be right.", at: gull.x };
+        }
+        for (const [key, place] of Object.entries(PLACES)) {
+          if (inBox(place.box, wx, y)) return { ...place, key, verb: "Open", at: (place.box[0] + place.box[2]) / 2 };
+        }
+        for (const thing of FOLK) {
+          if (inBox(thing.box, wx, y)) return { ...thing, verb: "Look at", at: (thing.box[0] + thing.box[2]) / 2 };
+        }
+        const sx = x + Math.round(camX * P_SEA);
+        const ship = shipX(lastTime);
+        if (inBox([ship - 2, 64, ship + 24, 88], sx, y)) return { name: "ship", verb: "Look at", look: "Someone's heading out late.", at: wx };
+        if (inBox([sea.lighthouseX - 7, 64, sea.lighthouseX + 9, 88], sx, y)) return { name: "lighthouse", verb: "Look at", look: "Someone up there is still awake.", at: wx };
+        if (inBox([sea.islandX - 54, 70, sea.islandX + 54, 89], sx, y)) return { name: "La Gomera", verb: "Look at", look: "La Gomera. On a clear night you can see San Sebastián.", at: wx };
+        const mx = sky.moonX - Math.round(camX * P_SKY);
+        if (Math.hypot(x - mx, y - MOON_Y) <= MOON_R + 2) return { name: "moon", verb: "Look at", look: "Full tonight.", at: wx };
+        return null;
+      }
+
+      // ---- State ----
+
+      const stage = document.getElementById("stage");
+      let ctx = null;           // whichever layer is being drawn
+      const sentenceEl = stage.querySelector(".sentence");
+      const speechEl = stage.querySelector(".speech");
+      const verbButtons = [...stage.querySelectorAll(".verbs button")];
+
+      const hero = { pose: "front", bob: 0, x: START_X, feet: 136, dir: 1 };
+      const gull = { flying: false, x: GULL_POST.x, y: GULL_POST.y, dir: 1, angle: Math.PI / 2, travelled: 0, landCheck: 0 };
+      let camX = 0;
+      let moved = false;        // until the first walk, the camera holds the opening shot
+      let walk = null;          // { x, feet, then, sentence, facing }
+      let walkClock = 0;
+      let armedVerb = null;     // a verb the visitor picked from the strip
+      let pointer = null;       // last mouse position, in screen game pixels
+      let speechTimer = 0;
+      let gp = 4;               // CSS pixels per game pixel
+      let lastTime = 0;
+
+      // Only touch the DOM when something changed. Writing text every frame forces layout every frame.
+      let shownSentence = "", shownVerb = "", shownSpeechPos = "";
+      let speechHalf = 0;       // half the speech line's width, measured once per line
+
+      function say(text, href) {
+        clearTimeout(speechTimer);
+        speechEl.textContent = "";
+        if (href) {
+          const a = document.createElement("a");
+          a.href = href;
+          a.target = "_blank";
+          a.rel = "noopener";
+          a.textContent = text;
+          speechEl.append(a);
+        } else {
+          speechEl.textContent = text;
+        }
+        speechEl.hidden = false;
+        speechHalf = speechEl.offsetWidth / 2;
+        shownSpeechPos = "";
+        // A link stays until the next action. A line fades after it has been read.
+        if (!href) speechTimer = setTimeout(hush, Math.max(1800, text.length * 70));
+      }
+
+      function hush() {
+        clearTimeout(speechTimer);
+        speechEl.hidden = true;
+      }
+
+      function showSentence(text, verb) {
+        if (text !== shownSentence) sentenceEl.textContent = shownSentence = text;
+        if (verb !== shownVerb) {
+          shownVerb = verb;
+          verbButtons.forEach((b) => b.classList.toggle("on", b.dataset.verb === verb));
+        }
+      }
+
+      function walkTo(x, feet, sentence, then, facing = null) {
+        walk = { x: clamp(x, 8, WORLD - 8), feet: clamp(feet, DOCK_TOP, DOCK_BOTTOM), sentence, then, facing };
+        moved = true;
+      }
+
+      function visit(key) {
+        const place = PLACES[key];
+        if (!opened[key]) {
+          opened[key] = true;
+          paintNear();
+        }
+        // Browsers only allow a new tab for a few seconds after the click, and
+        // Safari not at all once the walk has started. Then the line becomes a link.
+        const tab = window.open(place.url, "_blank");
+        if (tab) {
+          tab.opener = null;
+          say(place.says);
+        } else {
+          say(place.says, place.url);
+        }
+      }
+
+      function act(x, y) {
+        const target = hotspotAt(x, y);
+        const verb = armedVerb || (target ? target.verb : "Walk to");
+        const sentence = target ? `${verb} ${target.name}` : verb;
+        armedVerb = null;
+        hush();
+
+        if (verb === "Look at" && target) {
+          if (hero.pose !== "front" && Math.abs(target.at - hero.x) > 2) hero.dir = target.at < hero.x ? -1 : 1;
+          walk = null;
+          hero.pose = hero.pose === "front" ? "front" : "stand";
+          hero.bob = 0;
+          showSentence(sentence, verb);
+          say(target.look);
+          return;
+        }
+
+        if (verb === "Open" && target && !target.key) {
+          walk = null;
+          showSentence(sentence, verb);
+          say("I can't open that.");
+          return;
+        }
+
+        if (target && target.key) {
+          const { spot } = target;
+          walkTo(spot.x, spot.feet, sentence, () => {
+            hero.dir = spot.dir;
+            if (verb === "Open") visit(target.key);
+          });
+          return;
+        }
+
+        // A click straight below him: step down towards the visitor and face them.
+        const wx = x + camX;
+        if (y > hero.feet - 4 && Math.abs(wx - hero.x) < 10) {
+          walkTo(hero.x, y, sentence, () => { hero.pose = "front"; }, "front");
+          return;
+        }
+
+        walkTo(wx, y, sentence, null);
+      }
+
+      // ---- Input ----
+
+      const toScreen = (e) => {
+        const r = stage.getBoundingClientRect();
+        return { x: ((e.clientX - r.left) / r.width) * viewW, y: ((e.clientY - r.top) / r.height) * (TOP + H + BOTTOM) - TOP };
+      };
+
+      stage.addEventListener("pointermove", (e) => {
+        pointer = e.pointerType === "mouse" ? toScreen(e) : null;
+      });
+      stage.addEventListener("pointerleave", () => { pointer = null; });
+      stage.addEventListener("click", (e) => {
+        if (e.target.closest("button, a")) return;
+        const { x, y } = toScreen(e);
+        if (y >= SCENE_H) return;
+        act(x, y);
+      });
+      verbButtons.forEach((b) => b.addEventListener("click", () => {
+        armedVerb = b.dataset.verb;
+        hush();
+      }));
+
+      // ---- Layout: fill the window, keep the pixels square ----
+
+      const creditsEl = stage.querySelector(".credits");
+      const verbsEl = stage.querySelector(".verbs");
+      const linksEl = stage.querySelector(".links");
+      const hintEl = stage.querySelector(".hint");
+
+      function layout() {
+        const vw = window.innerWidth, vh = window.innerHeight;
+        const ideal = (H * vw) / vh;
+        const portrait = ideal < 240;
+        let cssW = vw, cssH = vh;
+        if (portrait) {
+          // Tall screens: the scene takes about half the height, the sky grows
+          // above it to hold the credits, and the strip grows below it for thumbs.
+          viewW = clamp(Math.round(vw / ((0.5 * vh) / H)), 240, 320);
+          gp = vw / viewW;
+          const extra = Math.max(0, Math.round(vh / gp) - H);
+          TOP = Math.round(extra * 0.55);
+          BOTTOM = extra - TOP;
+        } else {
+          viewW = clamp(Math.round(ideal), 240, 560);
+          if (ideal > 560) cssW = (vh * viewW) / H;     // very wide: full height, bars at the sides
+          gp = cssH / H;
+          TOP = BOTTOM = 0;
+        }
+        stage.dataset.layout = portrait ? "portrait" : "landscape";
+        stage.style.width = `${cssW}px`;
+        stage.style.height = `${cssH}px`;
+        stage.style.setProperty("--gp", `${gp}px`);
+
+        sizeLayer(nearL, viewW + 2, SCENE_H - NEAR_TOP);
+        sizeLayer(heroL, 13, SPRITE_H + 1);
+        sizeLayer(gullL, 9, 9);
+        sizeLayer(shipL, 24, 24);
+        paintShip();
+        heroKey = gullKey = "";
+        arrows.forEach((a) => {
+          a.style.width = `${7 * gp}px`;
+          a.style.height = `${5 * gp}px`;
+          a.style.transform = `translate3d(${Math.round((a.dataset.side === "left" ? 3 : viewW - 10) * gp)}px,${Math.round((TOP + 100) * gp)}px,0)`;
+        });
+
+        const at = (el, y) => { el.style.top = `${Math.round(y * gp)}px`; };
+        // On narrow sideways screens (an iPad, a small laptop window) the shed roofs come
+        // closer to the middle, so the credits shrink and rise to keep clear of them.
+        const narrow = !portrait && viewW < 320;
+        stage.style.setProperty("--credits-scale", narrow ? Math.max(0.82, viewW / 337).toFixed(3) : "1");
+        at(creditsEl, portrait ? Math.max(9, TOP * 0.42 - 12) : narrow ? 5 : 9);
+        at(sentenceEl, TOP + 147);
+        at(verbsEl, TOP + (portrait ? 163 : 164));
+        at(linksEl, portrait ? TOP + H + BOTTOM * 0.42 : 184);
+        at(hintEl, TOP + H + BOTTOM * 0.12);
+
+        paintSky();
+        paintSea();
+        camX = moved ? clampCam(hero.x - viewW / 2) : startCam();
+        if (!speechEl.hidden) speechHalf = speechEl.offsetWidth / 2;
+        shownSpeechPos = "";
+      }
+      window.addEventListener("resize", layout);
+
+      // The adventure-game crosshair, three CSS pixels per game pixel, with a hard shadow.
+      function crosshair(color) {
+        const arms = [[0, 4], [1, 4], [7, 4], [8, 4], [4, 0], [4, 1], [4, 7], [4, 8]];
+        const cell = (x, y, c) => `<rect x="${x * 3}" y="${y * 3}" width="3" height="3" fill="${c}"/>`;
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" shape-rendering="crispEdges">${
+          arms.map(([x, y]) => cell(x + 1, y + 1, "#000")).join("")}${arms.map(([x, y]) => cell(x, y, color)).join("")}</svg>`;
+        return `url("data:image/svg+xml,${encodeURIComponent(svg)}") 13 13, crosshair`;
+      }
+      stage.style.setProperty("--cursor", crosshair("#f6f0d8"));
+      stage.style.setProperty("--cursor-hot", crosshair("#f6c76a"));
+
+      // ---- Life on the dock ----
+
+      const shipX = (t) => {
+        const span = sea.canvas ? sea.canvas.width + 60 : 1;
+        return ((sea.islandX + 67 + 30 + t * 0.6) % span) - 30;
+      };
+
+      function paintShip() {
+        const px = pixelPen(shipL.ctx);
+        shipL.ctx.clearRect(0, 0, 24, 24);
+        shipL.ctx.translate(0, -64);
+        px("#0d0b20", 0, 84, 20, 2);
+        px("#0d0b20", 2, 86, 16, 1);
+        px("#0d0b20", 6, 66, 1, 18);
+        px("#0d0b20", 13, 70, 1, 14);
+        for (let y = 0; y < 12; y++) px("#1d1a3e", 3, 68 + y, 3 + (y >> 2), 1);
+        for (let y = 0; y < 9; y++) px("#1d1a3e", 10, 72 + y, 3 + (y >> 2), 1);
+        px("#0d0b20", 18, 82, 4, 1);
+        px("#f2c45c", 15, 84);
+        shipL.ctx.setTransform(1, 0, 0, 1, 0, 0);
+      }
+
+      function paintCloud(cl, lit) {
+        const px = pixelPen(cl.layer.ctx);
+        cl.layer.ctx.clearRect(0, 0, cl.len, 4);
+        const body = lit ? "#4a4486" : "#1f1c48", top = lit ? "#9b94c8" : "#2c2964";
+        px(top, 3, 0, cl.len - 8, 1);
+        px(body, 1, 1, cl.len - 2, 1);
+        px(body, 0, 2, cl.len, 1);
+        px(body, 4, 3, cl.len - 10, 1);
+        cl.lit = lit;
+      }
+
+      // The arrows at the edges: baked once, pulsed by CSS.
+      const arrows = ["left", "right"].map((side) => {
+        const c = document.createElement("canvas");
+        c.width = 7; c.height = 5;
+        c.className = "arrow";
+        c.dataset.side = side;
+        c.hidden = true;
+        const x = c.getContext("2d");
+        [[2, 0], [1, 1], [0, 2], [1, 3], [2, 4]].forEach(([cx, cy]) => [0, 3].forEach((gap) => {
+          x.fillStyle = "#f6c76a";
+          x.fillRect(side === "left" ? cx + gap : 2 - cx + gap + 1, cy, 1, 1);
+        }));
+        stage.insertBefore(c, worldEl.nextSibling);
+        return c;
+      });
+
+      let heroKey = "", gullKey = "";
+
+      // Twinkles, in the sky layer's own coordinates.
+      function drawSky(t) {
+        const px = pixelPen(ctx);
+        for (const s of sky.stars) {
+          const v = Math.sin(t * s.rate + s.phase);
+          if (v > 0.9) {
+            px("#ffffff", s.x, s.y);
+            px("#7e84c4", s.x - 1, s.y); px("#7e84c4", s.x + 1, s.y);
+          } else if (v < -0.8) {
+            px("#2a2860", s.x, s.y);
+          }
+        }
+      }
+
+      // Glints, surf, the lighthouse and the moon's path, in the sea layer's coordinates.
+      function drawSea(t, off) {
+        const px = pixelPen(ctx);
+        for (const g of sea.glints) {
+          const v = Math.sin(t * g.rate + g.phase);
+          if (v < 0.1) continue;
+          const x = g.x;
+          if (x - off > viewW || x + g.w - off < 0) continue;
+          px(g.dark ? "#0c1434" : "#2f3c74", x, g.y, Math.max(1, Math.round(g.w * v)), 1);
+        }
+        // Surf at the island's cliffs.
+        const IX = sea.islandX;
+        [-54, -53, -52, 52, 53, 54].forEach((d, i) => px((i + Math.floor(t * 2)) % 2 ? "#9aa0d0" : "#6a70aa", IX + d, HORIZON));
+        // The lighthouse beam sweeps round.
+        const LX = sea.lighthouseX;
+        if (LX - off > -80 && LX - off < viewW + 80) {
+          const a = t * 0.9, c = Math.cos(a);
+          const facing = Math.sin(a) > 0.92;
+          px(facing ? "#ffffff" : "#ffe9a8", LX + (facing ? 0 : 1), 68, facing ? 4 : 2, 1);
+          if (Math.abs(c) > 0.12) {
+            const len = Math.round(80 * Math.abs(c)), dir = Math.sign(c);
+            const x0 = dir > 0 ? LX + 4 : LX - len;
+            px("rgba(255,240,180,0.16)", x0, 67, len, 3);
+            px("rgba(255,240,180,0.1)", dir > 0 ? x0 : x0 + Math.round(len * 0.3), 66, Math.round(len * 0.7), 1);
+          }
+        }
+        // The moon's path on the water, under wherever the moon is now.
+        const MX = Math.round(sky.moonX - camX * P_SKY + off);
+        const R = rng(Math.floor(t * 5));
+        for (let y = HORIZON + 1; y < 116; y++) {
+          const spread = 2 + (y - HORIZON) * 0.45;
+          const dashes = y % 2 === 0 ? 3 : 1;
+          for (let k = 0; k < dashes; k++) {
+            if (R() < 0.2) continue;
+            const w = 1 + ((R() * spread) | 0);
+            const x = MX - w / 2 + (R() - 0.5) * spread * 1.4;
+            px(y % 2 === 0 ? (R() < 0.55 ? "#ece6c6" : "#a3a8d2") : "#58609e", x, y, w, 1);
+          }
+        }
+      }
+
+      function drawLife(t, dt) {
+        const px = pixelPen(ctx);
+        const flicker = (id) => 0.7 + 0.3 * hash(Math.floor(t * 9) + id * 31);
+
+        // The boat, bobbing against the far edge of the dock.
+        const b = Math.round(Math.sin(t * 1.3));
+        px("#c9b28a", 22, 107 + b, 56, 1);
+        px("#a33a2e", 22, 108 + b, 56, 2);
+        for (let i = 0; i < 6; i++) {
+          const inset = i >= 2 ? (i - 1) * 3 : 0;
+          px("#24486a", 22 + inset, 110 + b + i, 56 - 2 * inset, 1);
+        }
+        px("#e6dcc4", 66, 111 + b, 1, 1); px("#e6dcc4", 68, 111 + b, 2, 1); px("#e6dcc4", 71, 111 + b, 1, 1);
+        px("#3a2a24", 46, 92 + b, 1, 15);                 // a stubby mast
+        px("#1a1422", 42, 104, 4, 1);                     // rope to the post
+        for (let i = 0; i < 6; i++) px("#8a7a5a", 44 + i, 105 + Math.round(i * 0.4 + b * i / 6));
+
+        // Lanterns.
+        LANTERNS.forEach(([lx, ly], i) => {
+          const f = flicker(i);
+          px(f > 0.85 ? "#fff2c0" : "#ffd46b", lx - 1, ly - 2, 3, 5);
+          px("#fff2c0", lx, ly - 1, 1, 2);
+          ctx.globalAlpha = (f - 0.6) * 0.9;
+          ctx.drawImage(GLOW, lx - 18, ly - 18);
+          ctx.globalAlpha = 1;
+        });
+
+        // Brazier fire and smoke.
+        const fs = Math.floor(t * 12);
+        for (let i = 0; i < 6; i++) {
+          const h = 2 + Math.floor(hash(fs * 7 + i) * 4);
+          px(i % 2 ? "#f6a03c" : "#ffd46b", 87 + i * 2, 109 - h, 2, h);
+          px("#e05a2a", 87 + i * 2, 109 - h - 1, 1, 1);
+        }
+        ctx.globalAlpha = 0.4 + 0.3 * hash(fs);
+        ctx.drawImage(GLOW, 92 - 18, 106 - 18);
+        ctx.globalAlpha = 1;
+        for (let k = 0; k < 5; k++) {
+          const age = ((t + k * 0.8) % 4) / 4;
+          px(`rgba(150,140,180,${((1 - age) * 0.45).toFixed(2)})`, 92 + Math.sin(age * 6 + k) * 2 + age * 8, 101 - age * 30, 2, 1);
+        }
+
+        // The fisherman and his line. Every nine seconds something bites.
+        const cycle = t % 9;
+        const biting = cycle > 6 && cycle < 7.4, landed = cycle >= 7.4 && cycle < 8.2;
+        ctx.drawImage(FISHER_SPRITE[1], 117, 95);
+        const tipX = 146, tipY = biting ? 86 : landed ? 80 : 83;
+        for (let i = 0; i <= 18; i++) px("#4a3a2a", Math.round(128 + (tipX - 128) * i / 18), Math.round(104 + (tipY - 104) * i / 18));
+        px("#efc6a2", 127, 103, 2, 2);                    // hand on the rod
+        if (landed) {
+          for (let y = tipY + 1; y < 96; y++) px("#8a8aa0", tipX + 1, y);
+          const flip = Math.floor(t * 10) % 2;
+          px("#c8d4e0", tipX - 1 + flip, 96, 3, 2);       // a small fish, flapping
+          px("#8a9ab0", tipX + (flip ? 3 : -2), 96, 1, 2);
+        } else {
+          const bobY = biting ? 111 + Math.floor(t * 8) % 2 : 109 + Math.round(Math.sin(t * 2.2));
+          for (let y = tipY + 1; y < bobY; y++) if (y % 2 === 0) px("#8a8aa0", tipX + 1, y);
+          px("#e8e0d0", tipX, bobY, 2, 1);
+          px("#c83a2e", tipX, bobY + 1, 2, 1);
+        }
+
+        // The cat, eyeing the bucket. The tail flicks now and then.
+        const cx = 158, cy = 115;
+        const CAT = ["k.k.....", "kkk.....", "gkk.....", "kkkk....", ".kkkk...", ".kkkkk..", ".kk.kk.."];
+        CAT.forEach((row, r) => [...row].forEach((ch, i) => {
+          if (ch !== ".") px(ch === "g" ? (landed ? "#d8f0a0" : "#9fe07a") : "#1a1820", cx + i, cy + r);
+        }));
+        px("#3a3650", cx, cy, 1, 1); px("#3a3650", cx + 2, cy, 1, 1);
+        const tail = t % 3 < 0.35 || landed ? [[6, 6], [7, 5], [8, 4], [9, 3], [9, 2]] : [[6, 6], [7, 6], [8, 5], [8, 4], [8, 3]];
+        tail.forEach(([dx, dy]) => px("#1a1820", cx + dx, cy + dy));
+
+        // The musician on his barrel, strumming a timple.
+        const mx = 694, strum = Math.floor(t * 5) % 2, tap = Math.floor(t * 2.5) % 2;
+        px("#2a2030", mx + 4, 86, 5, 2);                  // hat
+        px("#2a2030", mx + 2, 88, 9, 1);
+        px("#efc6a2", mx + 4, 89, 5, 5);
+        px("#15111a", mx + 5, 91); px("#15111a", mx + 7, 91);
+        px("#a8624f", mx + 6, 93);
+        px("#cf9d7d", mx + 5, 94, 3, 1);
+        px("#d8d0c0", mx + 2, 95, 9, 10);
+        px("#a8a090", mx + 2, 104, 9, 1);
+        px("#c08040", mx + 1, 99, 6, 4);                  // timple body
+        px("#6a4020", mx + 3, 100, 2, 2);
+        [[7, 98], [8, 97], [9, 97], [10, 96], [11, 95]].forEach(([dx, y]) => px("#6a4020", mx + dx, y));
+        px("#6a4020", mx + 12, 94, 1, 2);
+        px("#efc6a2", mx + 10, 96, 1, 2);                 // fretting hand
+        px("#d8d0c0", mx + 6, 98 + strum * 2, 2, 1);      // strumming arm
+        px("#efc6a2", mx + 4, 99 + strum * 2, 2, 1);
+        px("#3a3a48", mx + 3, 105, 7, 3);
+        px("#3a3a48", mx + 3, 108, 2, 9);
+        px("#3a3a48", mx + 8, 108, 2, 9);
+        px("#222", mx + 2, 117, 3, 2);
+        px("#222", mx + 8, 117 - tap, 3, 2);
+
+        // Notes drift up from the timple.
+        for (let k = 0; k < 4; k++) {
+          const age = ((t + k * 0.75) % 3) / 3;
+          const nx = Math.round(mx + 13 + age * 10 + Math.sin(age * 9 + k) * 2), ny = Math.round(92 - age * 28);
+          ctx.globalAlpha = 1 - age;
+          const col = k % 2 ? "#7fd9e6" : "#f6c76a";
+          px(col, nx + 1, ny, 1, 3);
+          px(col, nx, ny + 2, 2, 2);
+          px(col, nx + 2, ny, 1, 1);
+        }
+        ctx.globalAlpha = 1;
+
+        // The dancer.
+        const dx = 734, step = Math.floor(t * 2.2) % 4;
+        const sway = [0, 1, 0, -1][step];
+        px("#1a1012", dx + 1, 87, 4, 2);
+        px("#efc6a2", dx, 89, 5, 5);
+        px("#1a1012", dx, 89, 1, 4);
+        px("#1a1012", dx + 4, 89, 1, 3);
+        px("#15111a", dx + 1, 91); px("#15111a", dx + 3, 91);
+        px("#cf9d7d", dx + 2, 94);
+        px("#c0303a", dx, 95, 5, 6);
+        for (let i = 0; i < 15; i++) {
+          const w = 5 + 2 * Math.floor(i / 2);
+          const shift = Math.round(sway * i / 10);
+          px(i % 5 === 4 ? "#e05060" : "#c0303a", dx + 2 - (w >> 1) + shift, 101 + i, w, 1);
+        }
+        px("#efc6a2", dx + 1, 116, 1, 6);
+        px("#efc6a2", dx + 3, 116, 1, 6);
+        px("#222", dx, 122, 2, 2);
+        px("#222", dx + 3, 122, 2, 2);
+        const UP = [[-1, 96], [-2, 95], [-3, 94], [-3, 93], [-3, 92], [-3, 91], [-2, 90]];
+        const HIP = [[-1, 96], [-2, 97], [-3, 98], [-2, 99], [-1, 100]];
+        const leftArm = step === 3 ? HIP : UP, rightArm = step === 1 ? HIP : UP;
+        leftArm.forEach(([ax, ay]) => px("#efc6a2", dx + ax, ay));
+        rightArm.forEach(([ax, ay]) => px("#efc6a2", dx + 4 - ax, ay));
+
+        // The barman, polishing the same glass.
+        const wob = Math.round(Math.sin(t * 6));
+        px("#2a1a14", 820, 85, 5, 2);
+        px("#efc6a2", 820, 86, 5, 5);
+        px("#15111a", 821, 88); px("#15111a", 823, 88);
+        px("#e9e2d0", 818, 91, 9, 10);
+        px("#a8c6e6", 826 + wob, 95, 2, 3);
+        px("#efc6a2", 825 + wob, 96, 2, 2);
+
+        // String lights over the bar.
+        BULBS.forEach(([bx, by], i) => {
+          const on = hash(i * 13 + Math.floor(t * 2.5)) > 0.18;
+          px(on ? BULB_COLORS[(i + Math.floor(t * 1.5)) % 4] : "#3a3040", bx, by, 1, 2);
+        });
+
+      }
+
+      // Luján and the gull are sprites: redrawn only when their frame changes, moved by the browser.
+      function drawSprites(t) {
+        const heroNow = `${hero.pose}|${hero.dir}`;
+        if (heroNow !== heroKey) {
+          heroKey = heroNow;
+          const c = heroL.ctx;
+          c.clearRect(0, 0, 13, SPRITE_H + 1);
+          c.fillStyle = "rgba(10,6,12,0.55)";
+          c.fillRect(0, SPRITE_H - 1, 13, 2);
+          c.drawImage(HERO[hero.pose][hero.dir], 0, 0);
+        }
+        place(heroL, hero.x - 6 - camX, TOP + hero.feet - SPRITE_H);
+
+        const wings = Math.floor(t * 7) % 2 ? "up" : "down";
+        const gullNow = gull.flying ? `${wings}|${gull.dir}` : `perched|${gull.dir}`;
+        if (gullNow !== gullKey) {
+          gullKey = gullNow;
+          const c = gullL.ctx;
+          c.clearRect(0, 0, 9, 9);
+          if (gull.flying) {
+            c.drawImage(GULL[wings][gull.dir], 0, 5);
+          } else {
+            c.fillStyle = "rgba(10,6,12,0.4)";
+            c.fillRect(2, 7, 5, 1);
+            c.drawImage(GULL.perched[gull.dir], 0, 0);
+          }
+        }
+        place(gullL, gull.x - 4 - camX, TOP + gull.y - 7);
+      }
+
+      function updateGull(t, dt) {
+        const near = Math.abs(hero.x - GULL_POST.x) < 34;
+        if (!gull.flying) {
+          gull.dir = hash(Math.floor(t / 2.5)) > 0.5 ? 1 : -1;
+          if (near) Object.assign(gull, { flying: true, angle: Math.PI / 2, travelled: 0, landCheck: Math.PI * 2 });
+          return;
+        }
+        // A loop through the sky that passes back over the post every turn.
+        gull.angle += 1.3 * dt;
+        gull.travelled += 1.3 * dt;
+        if (gull.travelled >= gull.landCheck) {
+          if (!near) {
+            Object.assign(gull, { flying: false, x: GULL_POST.x, y: GULL_POST.y });
+            return;
+          }
+          gull.landCheck += Math.PI * 2;
+        }
+        gull.x = GULL_POST.x + 80 * Math.cos(gull.angle);
+        gull.y = GULL_POST.y - 22 + 22 * Math.sin(gull.angle);
+        gull.dir = -Math.sin(gull.angle) >= 0 ? 1 : -1;
+      }
+
+      // ---- Loop ----
+
+      let last = performance.now();
+      function frame(now) {
+        const dt = Math.min(0.05, (now - last) / 1000);
+        last = now;
+        const t = now / 1000;
+        lastTime = t;
+
+        if (walk) {
+          const dx = walk.x - hero.x, dy = walk.feet - hero.feet;
+          const dist = Math.hypot(dx, dy);
+          const step = WALK_SPEED * dt;
+          if (Math.abs(dx) > 0.5) hero.dir = dx < 0 ? -1 : 1;
+          if (dist <= step) {
+            Object.assign(hero, { x: walk.x, feet: walk.feet, pose: "stand", bob: 0 });
+            const { then } = walk;
+            walk = null;
+            walkClock = 0;
+            if (then) then();
+          } else {
+            hero.x += (dx / dist) * step;
+            hero.feet += (dy / dist) * step;
+            walkClock += dt;
+            const [pose, bob] = WALK_CYCLE[Math.floor(walkClock / STEP_TIME) % WALK_CYCLE.length];
+            hero.pose = walk.facing || pose;
+            hero.bob = bob;
+          }
+        }
+        updateGull(t, dt);
+
+        // The camera eases after Luján rather than locking to him.
+        camX += (clampCam(hero.x - viewW / 2) - camX) * Math.min(1, dt * 5);
+        if (Math.abs(clampCam(hero.x - viewW / 2) - camX) < 0.05) camX = clampCam(hero.x - viewW / 2);
+        if (!moved) camX = startCam();
+
+        const hovered = pointer ? hotspotAt(pointer.x, pointer.y) : null;
+        if (walk) {
+          showSentence(walk.sentence, shownVerb);
+        } else if (pointer && pointer.y < SCENE_H) {
+          const verb = armedVerb || (hovered ? hovered.verb : "Walk to");
+          showSentence(hovered ? `${verb} ${hovered.name}` : verb, verb);
+        } else if (armedVerb) {
+          showSentence(armedVerb, armedVerb);
+        }
+
+        // Each layer: draw at the whole-pixel offset, slide by the fraction.
+        const skyOff = camX * P_SKY, seaOff = camX * P_SEA;
+        const span = sky.canvas.width + 80;
+        for (const cl of sky.clouds) {
+          const cx = ((cl.x + t * cl.speed) % span) - 40;
+          const lit = Math.abs(cx + cl.len / 2 - sky.moonX) < 34 && Math.abs(cl.y - MOON_Y) < 14;
+          if (lit !== cl.lit) paintCloud(cl, lit);
+          place(cl.layer, cx - skyOff, TOP + cl.y);
+        }
+        place(shipL, shipX(t) - seaOff, TOP + 64 + Math.sin(t * 0.9) * 0.6);
+
+        const skyX = Math.floor(skyOff);
+        ctx = skyL.ctx;
+        ctx.setTransform(1, 0, 0, 1, -skyX, 0);
+        ctx.drawImage(skyArt, 0, 0);
+        ctx.setTransform(1, 0, 0, 1, -skyX, TOP);
+        drawSky(t);
+        place(skyL, skyX - skyOff, 0);
+
+        const seaX = Math.floor(seaOff);
+        ctx = seaL.ctx;
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, seaL.w, seaL.h);
+        ctx.setTransform(1, 0, 0, 1, -seaX, 0);
+        ctx.drawImage(seaArt, 0, 0);
+        ctx.setTransform(1, 0, 0, 1, -seaX, -(HORIZON - 30));
+        drawSea(t, seaOff);
+        place(seaL, seaX - seaOff, TOP + HORIZON - 30);
+
+        const nearX = Math.floor(camX);
+        ctx = nearL.ctx;
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, nearL.w, nearL.h);
+        ctx.setTransform(1, 0, 0, 1, -nearX, -NEAR_TOP);
+        ctx.drawImage(near, 0, 0);
+        drawLife(t, dt);
+        place(nearL, nearX - camX, TOP + NEAR_TOP);
+        drawSprites(t);
+
+        if (!!hovered !== stage.classList.contains("hot")) stage.classList.toggle("hot", !!hovered);
+        const showLeft = camX > 2, showRight = camX < WORLD - viewW - 2;
+        if (arrows[0].hidden === showLeft) arrows[0].hidden = !showLeft;
+        if (arrows[1].hidden === showRight) arrows[1].hidden = !showRight;
+
+        if (!speechEl.hidden) {
+          // Keep the whole line on screen, however long it is.
+          const edge = 4 * gp;
+          const left = clamp((hero.x - camX) * gp, speechHalf + edge, viewW * gp - speechHalf - edge);
+          const pos = `${Math.round(left)}|${Math.round((TOP + hero.feet - SPRITE_H - 3) * gp)}`;
+          if (pos !== shownSpeechPos) {
+            shownSpeechPos = pos;
+            const [l, tp] = pos.split("|");
+            speechEl.style.left = `${l}px`;
+            speechEl.style.top = `${tp}px`;
+          }
+        }
+
+        requestAnimationFrame(frame);
+      }
+
+      layout();
+      paintNear();
+      requestAnimationFrame(frame);
+    })();
+    </script>
   </body>
 </html>
